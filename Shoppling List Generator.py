@@ -1,5 +1,7 @@
 import os
 
+cur_str = lambda value, prefix = "$", suffix = "": f"{prefix}{value:.2f}{suffix}"
+
 class item:
     #The general class used for all shopping list items
     def __init__(self, data):
@@ -8,13 +10,13 @@ class item:
         self.item_cost = data[2]  #cost per item
     def __str__(self):
         #For printing the items in a list
-        return(f"{self.amount} {self.name}: ${self.total_cost()}")
+        return(f"{self.amount} {self.name}: {cur_str(self.total_cost())}")
     def total_cost(self):
         return(self.amount * self.item_cost)
     
 def request_item():
     #Get item name, amount, and cost from user
-    end_keywords = ["done", "finish", "finished", "end", "stop", "cease", "kill", "break"]   #The list of words that return False instead of a value
+    end_keywords = ["done", "finish", "finished", "end", "stop", "cease", "kill", "break", "halt"]   #The list of words that return False instead of a value
     name_len_range = [1, 40]
     amount_range = [1, 20]
     cost_range = [0, 5000] #User may have free items they need/things they're not purchasing directly etc.
@@ -80,21 +82,16 @@ def safe_name(desired, suffix):
     return(f"{desired}-{n}{suffix}")
 
 def export_to_file(display_name, file_name, data):
+    statistics = (f"Total cost is {cur_str(sum(i.total_cost() for i in data))}\nNumber of items is {sum(i.amount for i in data)}\nNumber of unique items is {len(data)}")
     with open(file_name, "w") as f:
         f.write(display_name + "\n\n")
         for i in data:
-            f.write("\n" + str(i) )
-    print(f"Shopping list saved as {file_name}")
-    print(f"Total cost was {sum(i.total_cost() for i in data)}")
-    print(f"Total items was {sum(i.amount for i in data)}")
-    print(f"Total unique items was {len(data)}")
+            f.write(str(i) + "\n")
+        f.write("\n" + statistics)
+    print(f"\nShopping list saved as {file_name}")
+    print(statistics)
     return()
 
 list_name = input("Shopping list name: ")
 
 export_to_file(list_name, safe_name("Shopping List Generator/Shopping Lists/" + list_name, ".txt"), save_items())
-
-#print(sum(i.total_cost() for i in items))
-
-#print total cost is:
-#file saved as ...
