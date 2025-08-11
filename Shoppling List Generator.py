@@ -1,6 +1,11 @@
 import os
+import re
 
 cur_str = lambda value, prefix = "$", suffix = "": f"{prefix}{value:.2f}{suffix}"
+#Returns value to 2dp as string with currency prefix/suffix
+
+first_numeric = lambda string: re.search(r"\d+(\.\d+)?", string).group()
+#Returns the first valid numerical value from a string, used to filter unwanted noise like "$" etc.
 
 class item:
     #The general class used for all shopping list items
@@ -13,7 +18,7 @@ class item:
         return(f"{self.amount} {self.name}: {cur_str(self.total_cost())}")
     def total_cost(self):
         return(self.amount * self.item_cost)
-    
+
 def request_item():
     #Get item name, amount, and cost from user
     end_keywords = ["done", "finish", "finished", "end", "stop", "cease", "kill", "break", "halt"]   #The list of words that return False instead of a value
@@ -38,7 +43,7 @@ def request_item():
 
     while not amount:
         try:
-            amount = int(input("Amount: "))
+            amount = int(first_numeric(input("Amount: ")))
             if amount < amount_range[0]:
                 print("Amount too small. Try again.")
                 amount = False
@@ -49,8 +54,9 @@ def request_item():
             print("Use an integer value. Try again.")
     
     while not item_cost:
+        cent_alts = ["cent", "¢"]   #All the ways for the user to say cent and have the function divide the price by 100
         try:
-            item_cost = float(input("Cost: "))
+            item_cost = (lambda x: float(first_numeric(x))/100 if any(cent_alt in x for cent_alt in cent_alts) else float(first_numeric(x)))(input("Cost: ").replace(",", ""))
             if item_cost < cost_range[0]:
                 print("Cost too low. Try again.")
                 item_cost = False
@@ -69,7 +75,7 @@ def save_items():
     while current_item:
         items.append(item(current_item))
         current_item = request_item()
-    return(items)
+    return(sorted(items, key = lambda x: x.name.lower()))
 
 def safe_name(desired, suffix):
     #Takes desired file name as argument, returns desired if untaken, else returns in name form desired-n where n is lowest untaken int
