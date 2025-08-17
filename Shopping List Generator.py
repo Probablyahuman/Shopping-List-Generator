@@ -21,8 +21,10 @@ class item:
 
 def request_item():
     #Get item name, amount, and cost from user
-    end_keywords = ["done", "finish", "finished", "end", "stop", "cease", "kill", "break", "halt"]   #The list of words that return False instead of a value
-    name_len_range = [1, 40]
+    end_alts = ["done", "finish", "finished", "end", "stop", "cease", "kill", "break", "halt"]   #The list of words that return False instead of a value
+    confirm_words = [["n", "no"], ["y", "yes", "1", "a"]]                       #strings for denial/confirmation; [0] for decline, [1] for accept
+    confirm_alts = [["cancel","decline", "deny"], ["confirm", "accept", "good"]]   #keywords for denial/confirmation; [0] for decline, [1] for accept
+    name_len_range = [1, 100]
     amount_range = [1, 100]
     cost_range = [0, 10000] #User may have free items they need/things they're not purchasing directly etc.
 
@@ -32,8 +34,8 @@ def request_item():
 
     while name == None:
         name = input("Item name: ")
-        if name.lower() in end_keywords:
-            return(False)
+        if name.lower() in end_alts:
+            return("End")
         elif len(name) < name_len_range[0]:
             print("Name too short. Try again.")
             name = None
@@ -43,7 +45,11 @@ def request_item():
 
     while amount == None:
         try:
-            amount = int(first_numeric(input("Amount: ")))
+            amount = input("Quantity: ")
+            if amount in confirm_words[0] or any(word in amount for word in confirm_alts[0]):
+                print("Entry cancelled, enter new/re-enter item.\n")
+                return()
+            amount = int(first_numeric(amount))
             if amount < amount_range[0]:
                 print("Amount too small. Try again.")
                 amount = None
@@ -52,30 +58,44 @@ def request_item():
                 amount = None
         except:
             print("Use an integer value. Try again.")
+            amount = None
     
     while item_cost == None:
         cent_alts = ["cent", "¢"]   #All the ways for the user to say cent and have the function divide the price by 100
-        #try:
-        if True:
-            item_cost = (lambda x: float(first_numeric(x))/100 if any(cent_alt in x for cent_alt in cent_alts) else float(first_numeric(x)))(input("Cost: ").replace(",", ""))
+        try:
+            item_cost = input("Individual cost: ")
+            if item_cost in confirm_words[0] or any(word in item_cost for word in confirm_alts[0]):
+                print("Entry cancelled, enter new/re-enter item.\n")
+                return()
+            item_cost = (lambda x: float(first_numeric(x))/100 if any(cent_alt in x for cent_alt in cent_alts) else float(first_numeric(x)))(item_cost.replace(",", ""))
             if item_cost < cost_range[0]:
                 print("Cost too low. Try again.")
                 item_cost = None
             elif item_cost > cost_range[1]:
                 print("Cost too high. Try again.")
                 item_cost = None
-        '''except:
-            print("Use a numerical value. Try again.")'''
-
-    return([name, amount, item_cost])
+        except:
+            print("Use a numerical value. Try again.")
+            item_cost = None
+    final_item = item([name, amount, item_cost])
+    while True:
+        confirmation = input(f"Confirm: {str(final_item)}?\n").strip().lower()
+        if confirmation in confirm_words[1] or any(word in confirmation for word in confirm_alts[1]):
+            print("Item saved.\n")
+            return(final_item)
+        elif confirmation in confirm_words[0] or any(word in confirmation for word in confirm_alts[0]):
+            print("Entry cancelled, enter new/re-enter item.\n")
+            return()
+        else:
+            print(f'Unable to interpret answer. Enter "{confirm_alts[1]}" or "{confirm_alts[0]}."')
 
 def save_items():
     #Use item class and request_item() repeatedly to return list of items user wants in shopping list
     items = []
     current_item = request_item()
-    while current_item or not items:
-        if current_item: items.append(item(current_item))
-        else: print("Please enter an item.")
+    while current_item != "End" or not items:
+        if current_item == "End": print("Please enter an item.")
+        elif current_item: items.append(current_item)
         current_item = request_item()
     return(sorted(items, key = lambda x: x.name.lower()))
 
@@ -101,13 +121,15 @@ def export_to_file(display_name, file_name, data):
     return()
 
 def request_file_name(prefix, suffix = ".txt"):
+    min_name_length = 1
     file_name = None
+    if not os.path.exists(prefix): os.makedirs(prefix)  #Creates shopping list subfolder if missing
     while file_name == None:
         desired_name = input("Shopping list name: ")
         file_name = safe_name(prefix + desired_name, suffix)
         try:
             if "/" in desired_name: raise ValueError('Filename cannot contain "/"')
-            if len(desired_name) < 1: raise ValueError('Filename must be at least 1 character')
+            if len(desired_name) < min_name_length: raise ValueError(f'Filename must be at least {min_name_length} character')
             with open(file_name, "w") as f:
                 pass  #Check if file is able to be created
             os.remove(file_name)
@@ -116,4 +138,6 @@ def request_file_name(prefix, suffix = ".txt"):
             print(f"Invalid name. Name must also be acceptable file name ({str(e).lower() if type(e) == ValueError else 'given filename unusable'}).")
     return(desired_name, file_name)
 
-export_to_file(*request_file_name("Shopping List Generator/Shopping Lists/"), save_items())
+list_subfolder = "Shopping Lists"   #The subfolder shopping lists are created in
+
+export_to_file(*request_file_name(f"{__file__.split('/')[-2]}/{list_subfolder}/"), save_items())
