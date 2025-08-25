@@ -1,11 +1,17 @@
+"""
+A simple python shopping list generator. Takes a series of items and prints them to a list.
+"""
+
 import os
 import re
 
+list_subfolder = "Shopping Lists"   #The subfolder shopping lists are created in
+
 cur_str = lambda value, prefix = "$", suffix = "": f"{prefix}{value:.2f}{suffix}"
-#Returns value to 2dp as string with currency prefix/suffix
+#Returns input to 2dp as string with currency prefix/suffix
 
 first_numeric = lambda string: re.search(r"\d+(\.\d+)?", string).group()
-#Returns the first valid numerical value from a string, used to filter unwanted noise like "$" etc.
+#Returns the first valid numerical value from a string; used to filter unwanted noise like "$" etc.
 
 class item:
     #The general class used for all shopping list items
@@ -19,10 +25,10 @@ class item:
     def total_cost(self):
         return(self.amount * self.item_cost)
 
-def request_item():
+def request_item(previous_items):
     #Get item name, amount, and cost from user
     end_alts = ["done", "finish", "finished", "end", "stop", "cease", "kill", "break", "halt"]   #The list of words that return False instead of a value
-    confirm_words = [["n", "no"], ["y", "yes", "1", "a"]]                       #strings for denial/confirmation; [0] for decline, [1] for accept
+    confirm_words = [["n", "no", "0"], ["y", "yes", "1", "a"]]                       #strings for denial/confirmation; [0] for decline, [1] for accept
     confirm_alts = [["cancel","decline", "deny"], ["confirm", "accept", "good"]]   #keywords for denial/confirmation; [0] for decline, [1] for accept
     name_len_range = [1, 100]
     amount_range = [1, 100]
@@ -33,7 +39,7 @@ def request_item():
     item_cost = None
 
     while name == None:
-        name = input("Item name: ")
+        name = input("Item name: ").strip()
         if name.lower() in end_alts:
             return("End")
         elif len(name) < name_len_range[0]:
@@ -42,6 +48,19 @@ def request_item():
         elif len(name) > name_len_range[1]:
             print("Name too long. Try again.")
             name = None
+        elif any((x for x in previous_items if x.name == name)):
+            #Make user confirm if item already exists as later code will overwrite it
+            while True:
+                confirmation = input(f'"{name}" is already on list; delete/overwrite?\n').strip().lower()
+                if confirmation in confirm_words[1] or any(word in confirmation for word in confirm_alts[1]):
+                    print("\nContinue new entry - ")
+                    break
+                elif confirmation in confirm_words[0] or any(word in confirmation for word in confirm_alts[0]):
+                    name = None
+                    print("Overwrite canceled.\n")
+                    break
+                else:
+                    print(f'Unable to interpret answer. Enter "{confirm_alts[1]}" or "{confirm_alts[0]}."')
 
     while amount == None:
         try:
@@ -87,16 +106,22 @@ def request_item():
             print("Entry cancelled, enter new/re-enter item.\n")
             return()
         else:
-            print(f'Unable to interpret answer. Enter "{confirm_alts[1]}" or "{confirm_alts[0]}."')
+            print(f'Unable to interpret answer. Enter "{confirm_alts[1][0]}" or "{confirm_alts[0][0]}."')
 
 def save_items():
     #Use item class and request_item() repeatedly to return list of items user wants in shopping list
     items = []
-    current_item = request_item()
+    current_item = request_item(items)
     while current_item != "End" or not items:
-        if current_item == "End": print("Please enter an item.")
+        try:
+            #Delete pre-existing matching name item if exists, else do nothing
+            items.remove(next(x for x in items if x.name == current_item.name))
+        except:
+            pass
+        
+        if current_item == "End": print("Please enter an item.")    #Won't let users end program until something on list
         elif current_item: items.append(current_item)
-        current_item = request_item()
+        current_item = request_item(items)
     return(sorted(items, key = lambda x: x.name.lower()))
 
 def safe_name(desired, suffix):
@@ -138,6 +163,7 @@ def request_file_name(prefix, suffix = ".txt"):
             print(f"Invalid name. Name must also be acceptable file name ({str(e).lower() if type(e) == ValueError else 'given filename unusable'}).")
     return(desired_name, file_name)
 
-list_subfolder = "Shopping Lists"   #The subfolder shopping lists are created in
+
+print('Enter the following data as instructed.\nYou will be asked to confirm after each item and can cancel at any time (by entering "cancel").\nTo change an item after confirming, simply re-enter it with the same name to delete/overwrite.\n')
 
 export_to_file(*request_file_name(f"{__file__.split('/')[-2]}/{list_subfolder}/"), save_items())
