@@ -98,6 +98,7 @@ def request_item(previous_items):
             item_cost = None
     final_item = item([name, amount, item_cost])
     while True:
+        #Confirm user is happy with item entry; don't save if not
         confirmation = input(f"Confirm: {str(final_item)}?\n").strip().lower()
         if confirmation in confirm_words[1] or any(word in confirmation for word in confirm_alts[1]):
             print("Item saved.\n")
